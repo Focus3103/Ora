@@ -728,9 +728,9 @@ body{background:#c8e8f8;font-family:'Sarabun',sans-serif;display:flex;justify-co
       <div style="background:#fff;border-radius:15px;padding:11px 15px;font-size:.82rem;color:#4A3880;cursor:pointer;" onclick="sendQ(this,'ควรกินขนมบ่อยแค่ไหน?')">💬 ควรกินขนมบ่อยแค่ไหน?</div>
     </div>
   </div>
-  <div style="padding:10px 16px 18px;background:#fff;display:flex;gap:8px;flex-shrink:0;">
-    <input id="chat-inp" placeholder="พิมพ์คำถามเกี่ยวกับฟัน..." style="flex:1;background:#F0FBFF;border:none;border-radius:20px;padding:12px 16px;font-family:'Sarabun',sans-serif;font-size:.83rem;color:#4A3880;outline:none;" onkeydown="if(event.key==='Enter')sendChat()"/>
-    <button onclick="sendChat()" style="width:44px;height:44px;background:#B48EF0;border-radius:15px;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:.12s;" onmousedown="this.style.transform='scale(.92)'" onmouseup="this.style.transform='scale(1)'"><img src="" data-icon-src="next" style="width:28px;height:28px;object-fit:contain;"></button>
+  <div style="padding:10px 12px 16px;background:#fff;flex-shrink:0;">
+    <div style="font-size:.68rem;color:#B8ADDA;margin:0 4px 7px;">แตะเลือกคำถามที่อยากรู้ได้เลย 👇</div>
+    <div id="chat-chips" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch;"></div>
   </div>
 </div>
 
@@ -1735,70 +1735,74 @@ window.nav = function(id) {
   }
 };
 
-// ── Chat with real Anthropic API ──
-let chatHistory = [];
+// ── Chat (offline mock — ตอบจากคลังคำถามในเครื่อง ไม่เรียก API) ──
+const ORA_QA = [
+  { q: 'ฟันผุเกิดจากอะไร?', a: 'ฟันผุเกิดจากเจ้าแบคทีเรียตัวจิ๋วในปากค่ะ 🦠 พอเรากินของหวานแล้วไม่แปรงฟัน มันจะเปลี่ยนน้ำตาลเป็นกรดมากัดผิวฟันจนเป็นรู 🕳️ วิธีป้องกันง่ายมาก แค่แปรงฟันให้สะอาดและลดของหวานลงนะคะ ✨' },
+  { q: 'แปรงฟันยังไงให้สะอาด?', a: 'จับแปรงเอียงประมาณ 45 องศากับขอบเหงือก แล้วขยับเบา ๆ เป็นวงกลมเล็ก ๆ ค่ะ 🪥 แปรงให้ครบทั้งด้านนอก ด้านใน และด้านบดเคี้ยว อย่าลืมซี่ในสุดที่มักลืมกันบ่อย ๆ นะคะ 😊' },
+  { q: 'ควรกินขนมบ่อยแค่ไหน?', a: 'กินได้ค่ะ แต่ไม่ควรกินจุบจิบทั้งวันนะคะ 🍬 เพราะยิ่งกินบ่อย ฟันยิ่งเจอกรดบ่อย ลองกินเป็นเวลา แล้วบ้วนปากหรือแปรงฟันหลังกินของหวาน ฟันก็จะแข็งแรงค่ะ 💪' },
+  { q: 'ต้องแปรงฟันวันละกี่ครั้ง?', a: 'อย่างน้อยวันละ 2 ครั้งค่ะ 🌞 ตอนเช้าหลังตื่นนอน และตอนกลางคืนก่อนเข้านอน 🌙 ครั้งก่อนนอนสำคัญที่สุดเลย เพราะตอนหลับน้ำลายจะน้อย ฟันเลยเสี่ยงผุง่ายกว่าเดิมค่ะ' },
+  { q: 'แปรงฟันนานแค่ไหนถึงพอ?', a: 'ประมาณ 2 นาทีค่ะ ⏱️ ลองเปิดเพลงที่ชอบสัก 1 เพลงแล้วแปรงไปจนจบเพลงก็ได้นะคะ 🎵 จะได้ไม่เผลอแปรงเร็วเกินไป ฟันสะอาดทั่วถึงทุกซี่เลยค่ะ 😁' },
+  { q: 'ใช้ยาสีฟันแค่ไหนถึงพอดี?', a: 'เด็กโตใช้ประมาณเท่าเม็ดถั่วก็พอค่ะ 🫛 ไม่ต้องบีบยาวเต็มแปรงแบบในโฆษณานะคะ และควรเลือกยาสีฟันที่มีฟลูออไรด์ เพราะช่วยให้ฟันแข็งแรงต้านฟันผุได้ดีค่ะ ✨' },
+  { q: 'จำเป็นต้องใช้ไหมขัดฟันไหม?', a: 'จำเป็นค่ะ! 😊 เพราะแปรงสีฟันเข้าไม่ถึงซอกฟัน แต่ไหมขัดฟันเข้าถึงได้ 🧵 ใช้วันละครั้งก่อนนอน ก็ช่วยเก็บเศษอาหารและคราบที่ซ่อนตามซอกฟันได้เยอะเลยนะคะ' },
+  { q: 'ทำไมต้องแปรงลิ้นด้วย?', a: 'เพราะบนลิ้นมีแบคทีเรียและคราบสะสมอยู่เยอะค่ะ 👅 ถ้าไม่ทำความสะอาดอาจทำให้มีกลิ่นปากได้ ลองแปรงเบา ๆ ที่ผิวลิ้นหลังแปรงฟันเสร็จ ปากจะสดชื่นขึ้นเยอะเลยค่ะ 🌿' },
+  { q: 'กินอะไรดีต่อฟัน?', a: 'มีเยอะเลยค่ะ เช่น นม โยเกิร์ต ชีส ที่มีแคลเซียมช่วยให้ฟันแข็งแรง 🧀 ผักผลไม้กรอบ ๆ อย่างแอปเปิลกับแครอทก็ช่วยขัดฟันได้ 🍎 และดื่มน้ำเปล่าแทนน้ำหวานก็ดีต่อฟันมากค่ะ 💧' },
+  { q: 'ควรไปหาหมอฟันบ่อยแค่ไหน?', a: 'ควรไปตรวจฟันทุก ๆ 6 เดือนค่ะ 🗓️ ถึงฟันจะไม่ปวดก็ควรไป เพราะคุณหมอจะช่วยเช็กฟันผุระยะเริ่มต้นที่เรามองไม่เห็น และขูดหินปูนให้ด้วยนะคะ 😊' },
+  { q: 'ฟันน้ำนมสำคัญไหม เดี๋ยวก็หลุด?', a: 'สำคัญมากค่ะ! 🦷 ฟันน้ำนมช่วยให้เคี้ยวอาหาร พูดชัด และช่วยกันที่ไว้ให้ฟันแท้ขึ้นตรงตำแหน่ง ถ้าฟันน้ำนมผุหรือหลุดเร็วเกินไป ฟันแท้อาจขึ้นเกได้ เลยต้องดูแลให้ดีนะคะ ✨' },
+  { q: 'เสียวฟันเกิดจากอะไร?', a: 'อาการเสียวฟันมักเป็นตอนกินของเย็นหรือหวานจัดค่ะ ❄️ อาจมาจากผิวฟันสึกหรือเหงือกร่น ทำให้ชั้นในของฟันไวต่อความรู้สึก ลองแปรงเบาลงและใช้ยาสีฟันสำหรับฟันเสียวดู ถ้าเป็นบ่อยควรให้หมอฟันตรวจนะคะ 😊' },
+  { q: 'มีกลิ่นปากทำยังไงดี?', a: 'กลิ่นปากมักมาจากแบคทีเรียและเศษอาหารที่ตกค้างค่ะ 🌬️ ลองแปรงฟันให้สะอาด แปรงลิ้นด้วย ใช้ไหมขัดฟัน และดื่มน้ำบ่อย ๆ จะช่วยได้เยอะ ถ้าดูแลดีแล้วยังมีกลิ่น ลองปรึกษาหมอฟันดูนะคะ 😊' },
+  { q: 'ควรเปลี่ยนแปรงสีฟันเมื่อไหร่?', a: 'ควรเปลี่ยนทุก ๆ 3 เดือนค่ะ 🪥 หรือถ้าขนแปรงเริ่มบานก่อนก็เปลี่ยนได้เลย เพราะขนแปรงที่บานจะทำความสะอาดฟันได้ไม่ดี และหลังหายป่วยก็ควรเปลี่ยนแปรงใหม่ด้วยนะคะ ✨' },
+  { q: 'กลัวหาหมอฟันทำยังไงดี?', a: 'ไม่ต้องกลัวนะคะ 🥰 คุณหมอใจดีและอยากช่วยให้ฟันเราแข็งแรง ลองหายใจเข้าลึก ๆ พาตุ๊กตาหรือของที่ชอบไปเป็นเพื่อน และบอกคุณหมอได้เลยถ้ารู้สึกกลัว ยิ่งไปบ่อยยิ่งชินและหายกลัวค่ะ 💜' }
+];
 
-const ORA_SYSTEM = `คุณคือ "ORA AI" หรือ "คู่หู" ผู้ช่วย AI สุขภาพช่องปากของแอป ORA (ดูแลรอยยิ้ม ด้วย AI) 
-ออกแบบมาเพื่อเด็กอายุ 0-13 ปี และผู้ปกครอง
+function initChatChips() {
+  const box = document.getElementById('chat-chips');
+  if (!box) return;
+  box.innerHTML = '';
+  ORA_QA.forEach(function (item) {
+    const b = document.createElement('button');
+    b.textContent = item.q;
+    b.style.cssText = "white-space:nowrap;background:#f3eeff;color:#7c4fd0;border:2px solid #e8ddfa;border-radius:16px;padding:9px 14px;font-family:'Sarabun',sans-serif;font-weight:700;font-size:.8rem;cursor:pointer;flex-shrink:0;transition:.12s;";
+    b.onmousedown = function () { this.style.transform = 'scale(.94)'; };
+    b.onmouseup = function () { this.style.transform = 'scale(1)'; };
+    b.onclick = function () { askQ(item.q); };
+    box.appendChild(b);
+  });
+}
 
-กฎการตอบ:
-- พูดภาษาไทยเสมอ เป็นกันเอง น่ารัก สนุกสนาน
-- ใช้ emoji ประกอบคำตอบ เช่น 😊 🪥 ✨
-- ตอบสั้นกระชับ ไม่เกิน 3-4 ประโยค
-- เรียกตัวเองว่า "คู่หู" หรือ "ORA AI"
-- ตอบเฉพาะเรื่องสุขภาพช่องปาก ฟัน การแปรงฟัน อาหารที่ดีต่อฟัน ฯลฯ
-- ถ้าถามนอกเรื่อง ให้เบี่ยงกลับมาเรื่องสุขภาพช่องปากอย่างน่ารัก
-- ห้ามให้คำวินิจฉัยทางการแพทย์ที่ซับซ้อน แนะนำให้พบทันตแพทย์
-- เหมาะสำหรับเด็ก ภาษาง่าย เข้าใจได้`;
-
+// คำถามจากบล็อก "คำถามยอดนิยม" กลางหน้าจอแชท
 function sendQ(el, q) {
-  el.parentElement.style.display = 'none';
+  if (el && el.parentElement) el.parentElement.style.display = 'none';
+  askQ(q);
+}
+
+// แตะปุ่มคำถาม -> แสดงคำถามผู้ใช้ + คำตอบจากคลัง
+function askQ(q) {
   addMsg(q, 'user');
-  callOraAI(q);
+  botAnswer(q);
 }
 
-function sendChat() {
-  const inp = document.getElementById('chat-inp');
-  const txt = inp.value.trim();
-  if (!txt) return;
-  inp.value = '';
-  addMsg(txt, 'user');
-  callOraAI(txt);
+function findAnswer(q) {
+  const hit = ORA_QA.find(function (item) { return item.q === q; });
+  return hit ? hit.a : 'ขอเก็บคำถามนี้ไว้ก่อนนะคะ ลองเลือกคำถามอื่นด้านล่างดูก่อนได้เลยค่ะ 😊';
 }
 
-async function callOraAI(userText) {
-  chatHistory.push({ role: 'user', content: userText });
-  
-  // Show typing indicator
+// โชว์ typing แล้วค่อยตอบ ให้ดูเป็นธรรมชาติ (ทำงานออฟไลน์ ไม่ต่อเน็ต)
+function botAnswer(q) {
   const c = document.getElementById('chat-messages');
   const typing = document.createElement('div');
   typing.id = 'typing-indicator';
   typing.style.cssText = 'display:flex;gap:8px;align-items:flex-end;';
-  typing.innerHTML = `<div style="width:34px;height:34px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><img src="${window.ORA_ICONS.dentist}" style="width:34px;height:34px;object-fit:contain;"></div><div style="background:#fff;border-radius:18px 18px 18px 4px;padding:11px 15px;font-size:.83rem;color:#B8ADDA;line-height:1.6;"><span style="animation:blink 1s infinite">●●●</span></div>`;
+  typing.innerHTML = '<div style="width:34px;height:34px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><img src="' + window.ORA_ICONS.dentist + '" style="width:34px;height:34px;object-fit:contain;"></div><div style="background:#fff;border-radius:18px 18px 18px 4px;padding:11px 15px;font-size:.83rem;color:#B8ADDA;line-height:1.6;"><span style="animation:blink 1s infinite">●●●</span></div>';
   c.appendChild(typing);
   c.scrollTop = c.scrollHeight;
-
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 1000,
-        system: ORA_SYSTEM,
-        messages: chatHistory
-      })
-    });
-    const data = await res.json();
-    const reply = data.content?.[0]?.text || 'ขอโทษนะคะ ลองถามใหม่อีกครั้งได้เลยค่ะ 🙏';
-    chatHistory.push({ role: 'assistant', content: reply });
-    document.getElementById('typing-indicator')?.remove();
-    addMsg(reply, 'ai');
-  } catch (err) {
-    document.getElementById('typing-indicator')?.remove();
-    addMsg('ขอโทษนะคะ เชื่อมต่อไม่ได้ตอนนี้ ลองใหม่อีกครั้งนะคะ 🙏', 'ai');
-  }
+  setTimeout(function () {
+    const t = document.getElementById('typing-indicator');
+    if (t) t.remove();
+    addMsg(findAnswer(q), 'ai');
+  }, 650);
 }
+
+initChatChips();
 
 function addMsg(text, role) {
   const c = document.getElementById('chat-messages');
