@@ -1,7 +1,7 @@
 // ORA Service Worker
 // แคชไฟล์ทั้งหมดไว้ในเครื่อง เพื่อให้เปิดแอปได้แม้ไม่มีเน็ต (offline-first)
 
-const CACHE_NAME = "ora-cache-v1";
+const CACHE_NAME = "ora-cache-v2";
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
